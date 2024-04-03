@@ -1,8 +1,7 @@
 import React from "react"
+import RouteList from "./routes.jsx"
 export default function App(){
     return (
-        <>
-            This is the firs step of the django-react-boilerplate
-        </>
+        <RouteList></RouteList>
     )
 }

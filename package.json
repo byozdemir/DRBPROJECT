@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "webpack --progress --config webpack/dev.config.js --watch",
+    "dev": "webpack --mode=development --progress --config webpack/dev.config.js --watch",
     "build": "webpack"
   },
   "keywords": [],
