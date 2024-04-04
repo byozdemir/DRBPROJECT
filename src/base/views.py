@@ -4,4 +4,4 @@ def index(request,path=""):
     if settings.DEBUG:
         return render(request,"frontend_dev/index.html")
     else:
-        return render(request,"frontend/index.html")
+        return render(request,"index.html")

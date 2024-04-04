@@ -16,6 +16,11 @@ module.exports = {
   module: {
     rules: [
       {
+        test: /\.css$/i,
+        include: path.resolve(__dirname, '../src/frontend'),
+        use: ['style-loader', 'css-loader', 'postcss-loader'],
+      },
+      {
         test: /.(js|jsx)$/,
         exclude: /node_modules/,
         use: {
