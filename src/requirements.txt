@@ -1,2 +1,5 @@
 Django
 whitenoise
+django-rest-framework
+django-rest-knox
+django-unfold
