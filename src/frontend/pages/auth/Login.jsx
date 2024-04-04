@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import api from "../../stores/api.js";
-import {useAuthStore} from '../../stores/auth.js'
-import {useNavigate} from 'react-router-dom'
-
+import { useAuthStore } from "../../stores/auth.js";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const login = useAuthStore((state)=>state.login)
+  const login = useAuthStore((state) => state.login);
   const signIn = async () => {
     setLoading(true);
     api
@@ -16,11 +17,14 @@ const Login = () => {
         password: password,
       })
       .then((response) => {
-        login(response.data.username,response.data.token)
-        location.href="/"
+        login(response.data.username, response.data.token);
+        toast.success("Successfuly logged. You'll be redirected.")
+        setTimeout(()=>{
+          location.href = "/";
+        },1000)
       })
       .catch((err) => {
-        console.log(err.response.data.detail);
+        toast.error(err.response.data.detail)
       })
       .finally(() => {
         setLoading(false);
