@@ -6,7 +6,6 @@ import { ToastContainer, toast } from "react-toastify";
 export default function App() {
   return (
     <>
-      <RouteList></RouteList>
       <ToastContainer
         position="top-right"
         autoClose={5000}
