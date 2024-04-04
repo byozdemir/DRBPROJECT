@@ -1,3 +1,5 @@
 src/venv/*
 node_modules/*
 src/db.*
+__pycache__/*
+.cpyt*

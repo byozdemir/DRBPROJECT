@@ -4,15 +4,32 @@ import { useAuthStore } from "../../stores/auth.js";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useForm } from "react-hook-form";
+import { useForm } from "react-hook-form"
+import { yupResolver } from "@hookform/resolvers/yup";
+import RegisterSchema from "../../lib/schemas/RegisterSchema.js"
 const Register = () => {
+  
   const [loading, setLoading] = useState(false);
   const login = useAuthStore((state) => state.login);
-  const { register, handleSubmit } = useForm();
+  const { register, handleSubmit,formState: { errors }, reset } = useForm({resolver:yupResolver(RegisterSchema)});
 
   const signUp = async (data) => {
     setLoading(true);
-    alert(JSON.stringify(data))
+    api
+      .post("signup", data)
+      .then((response) => {
+        login(response.data.username, response.data.token);
+        toast.success("Successfuly Registered. You'll be redirected.")
+        setTimeout(()=>{
+          location.href = "/";
+        },1000)
+      })
+      .catch((err) => {
+        toast.error(err.response.data.username[0])
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
   return (
     <div>
@@ -30,24 +47,26 @@ const Register = () => {
                     <input
                       className="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white"
                       type="text"
-                      {...register("username",{required:true})}
+                      {...register("username")}
                       placeholder="Username"
                       
                     />
+                    <p className="text-red-500">{errors.username?.message}</p>
                     <input
                       className="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white mt-5"
                       type="password"
-                      {...register("password",{required:true,minLength:8})}
+                      {...register("password")}
                       placeholder="Password"
-                      
                     />
+                    <p className="text-red-500">{errors.password?.message}</p>
                     <input
                       className="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white mt-5"
                       type="password"
-                      {...register("passwordrepeat",{required:true,minLength:8})}
+                      {...register("passwordrepeat")}
                       placeholder="Password Repeat"
                       
                     />
+                    <p className="text-red-500">{errors.passwordrepeat?.message}</p>
                     <button
                       type="submit"
                       disabled={loading}
