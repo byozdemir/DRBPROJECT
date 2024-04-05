@@ -3,10 +3,10 @@
 ### UNDER DEVELOPMENT!!
 
 ### features to be Developed
-- [ ] DRB Terminal.(will allow you to create react forms for frontend based on django models.)
+- [ ] DRB Terminal.(With some super powers)
 - [ ] Shacdn UI Integration
 - [ ] Social Authentication
-- [ ] Json Based Code Generation (write json for your models and drb will code django and frontend side.)
+- [ ] Object Based Code Generation (Create object for your models and drb will code django and frontend side.)
 
 ### Used Techs
 - [x] Django
