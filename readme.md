@@ -7,6 +7,7 @@
 - [x] Django Rest Framework
 - [x] Unfold Django Admin Theme
 - [x] React
+- [x] Typescript
 - [x] Webpack
 - [x] Tailwindcss
 - [x] Zustand
