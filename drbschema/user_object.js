@@ -19,6 +19,7 @@ const DRBObject = {
             label: "Password",
             type: "CharField",
             frontendType:'string',
+            serialize:false, // Use this prop if you don`t want to add this field to serializer.Default:true
             djangoAttrs: ["max_length=20"],
             reactAttrs:['min::8','max::32',]
           },
@@ -27,6 +28,7 @@ const DRBObject = {
             label: "private_key",
             type: "CharField",
             frontendType:'string',
+            serialize:false,
             formItem:false, // Use this prop if you don`t want to add this field to frontend forms.Default:true
             djangoAttrs: ["max_length=20"],
           },

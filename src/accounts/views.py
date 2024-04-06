@@ -22,6 +22,19 @@ def signup(request):
         return Response({'token': token.key,"username":user.username})
     return Response(serializer.errors, status=status.HTTP_200_OK)
 
+@api_view(['GET'])
+def userDetail(request,pk):
+    try:
+        snippet = User.objects.get(pk=pk)
+    except User.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    if request.method == 'GET':
+        serializer = UserSerializer(snippet)
+        return Response(serializer.data)
+
+
+
 @api_view(['POST'])
 def login(request):
     user = get_object_or_404(User, username=request.data['username'])
