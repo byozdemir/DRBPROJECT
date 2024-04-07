@@ -6,6 +6,7 @@ const DRBDJANGO_PATH = path.resolve(__dirname, "src");
 const DRBFRONTEND_PATH = path.resolve(DRBDJANGO_PATH, "frontend");
 const SCHEMA_PATH = path.resolve(DRBFRONTEND_PATH, "lib/schemas");
 const FORM_PATH = path.resolve(DRBFRONTEND_PATH, "components/forms");
+const TABLE_PATH = path.resolve(DRBFRONTEND_PATH, "components/tables");
 
 const generateModel = (model) => {
   var generatedCode = `\nclass ${model.modelName}(models.Model):\n`;
@@ -60,6 +61,7 @@ const generateForm = (model) => {
   import React,{useEffect} from 'react';
   import { useForm } from "react-hook-form";
   import { yupResolver } from "@hookform/resolvers/yup";
+  import { toast } from "react-toastify";
   import {${model.modelName}Schema} from '../../lib/${
     model.modelName
   }Schema.js';
@@ -156,16 +158,196 @@ const generateSerializer = (model) => {
 };
 
 const generateApiUrls = (model) => {
-    var generatedCode = `
+  var generatedCode = `
     path('${model.modelName}GetItems/',views.${model.modelName}GetItems),
     path('${model.modelName}Create/',views.${model.modelName}Create),
     path('${model.modelName}Edit/<int:pk>',views.${model.modelName}Edit),
     path('${model.modelName}Delete/<int:pk>',views.${model.modelName}Delete),
-    `
-    return generatedCode
+    `;
+  return generatedCode;
 };
 
-const generateTable = (model) => {};
+const generateTable = (model) => {
+  const serializedFields = model.fields.filter(
+    (field) => field.serialize === undefined
+  );
+  var generatedCode = `
+  import React,{useState,useEffect} from "react";
+  import api from "../../stores/api.js";
+  import { toast } from "react-toastify";
+  import {
+    MaterialReactTable,
+    createMRTColumnHelper,
+    useMaterialReactTable,
+  } from 'material-react-table';
+  import { Box, Button } from '@mui/material';
+  import FileDownloadIcon from '@mui/icons-material/FileDownload';
+  import { mkConfig, generateCsv, download } from 'export-to-csv';
+  const columnHelper = createMRTColumnHelper();
+  
+  const columns = [
+    ${serializedFields
+      .map((field) => {
+        return `
+        columnHelper.accessor('${field.fieldName}', {
+          header: '${field.label}',
+          size: 100,
+        })
+        `;
+      })
+      .join(",\n")}
+  ]
+  const csvConfig = mkConfig({
+    fieldSeparator: ',',
+    decimalSeparator: '.',
+    useKeysAsHeaders: true,
+  });
+
+  export default function ${model.modelName}Table() {
+    const [data,setData] = useState([])
+    const [isLoading,setIsLoading] = useState(false)
+    useEffect(()=>{
+        setIsLoading(true);
+        api.get("${model.modelName}/${model.modelName}/GetItems")
+        .then((response)=>{
+            setData(response.data.items)
+        })
+        .catch((err)=>{
+          toast.error('Error while fetching data! Please check the developer console');
+          console.log(err);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+
+    },[])
+    const handleExportRows = (rows) => {
+      const rowData = rows.map((row) => row.original);
+      const csv = generateCsv(csvConfig)(rowData);
+      download(csvConfig)(csv);
+    };
+  
+    const handleExportData = () => {
+      const csv = generateCsv(csvConfig)(data);
+      download(csvConfig)(csv);
+    };
+  
+    const editRow = (row)=>{
+      window.location = "${model.modelName}/${model.modelName}/Edit"+row.original.id
+    }
+  
+    const deleteRow = (row)=>{
+      if(window.confim("Are you sure you want to delete this entry?")){
+        api.delete("${model.modelName}/${model.modelName}/Delete/"+row.original.id)
+        .then((response)=>{
+            toast.success('Entry successfully deleted. ')
+            // Write code here.
+        })
+        .cath((err)=>{
+          toast.error("Error! Please check the developer console");
+          console.log(err)
+        })
+      }
+    }
+    const table = useMaterialReactTable({
+      columns,
+      data,
+      enableRowSelection: true,
+      enableEditing: true,
+      state:{
+        isLoading:isLoading
+      },
+      columnFilterDisplayMode: 'popover',
+      paginationDisplayMode: 'pages',
+      positionToolbarAlertBanner: 'bottom',
+      renderRowActions: ({ row, table }) => (
+        <Box sx={{ display: 'flex', gap: '1rem' }}>
+          <Tooltip title="Edit">
+            <IconButton onClick={()=>{
+              editRow(row)
+            }}>
+              <EditIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Delete">
+            <IconButton color="error" onClick={()=>{
+              deleteRow(row)
+            }}>
+              <DeleteIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+      renderTopToolbarCustomActions: ({ table }) => (
+        <Box
+          sx={{
+            display: 'flex',
+            gap: '16px',
+            padding: '8px',
+            flexWrap: 'wrap',
+          }}
+        >
+          <Button
+            //export all data that is currently in the table (ignore pagination, sorting, filtering, etc.)
+            onClick={handleExportData}
+            startIcon={<FileDownloadIcon />}
+          >
+            Export All Data
+          </Button>
+          <Button
+            disabled={table.getPrePaginationRowModel().rows.length === 0}
+            //export all rows, including from the next page, (still respects filtering and sorting)
+            onClick={() =>
+              handleExportRows(table.getPrePaginationRowModel().rows)
+            }
+            startIcon={<FileDownloadIcon />}
+          >
+            Export All Rows
+          </Button>
+          <Button
+            disabled={table.getRowModel().rows.length === 0}
+            //export all rows as seen on the screen (respects pagination, sorting, filtering, etc.)
+            onClick={() => handleExportRows(table.getRowModel().rows)}
+            startIcon={<FileDownloadIcon />}
+          >
+            Export Page Rows
+          </Button>
+          <Button
+            disabled={
+              !table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected()
+            }
+            //only export selected rows
+            onClick={() => handleExportRows(table.getSelectedRowModel().rows)}
+            startIcon={<FileDownloadIcon />}
+          >
+            Export Selected Rows
+          </Button>
+        </Box>
+      ),
+    });
+
+    return(
+      <MaterialReactTable table={table}/>
+    )
+
+  }
+
+
+
+  `;
+
+  fs.writeFile(
+    path.resolve(TABLE_PATH, `${model.modelName}Table.jsx`),
+    generatedCode,
+    (err) => {
+      if (err) {
+        console.error(err);
+      } else {
+        console.log(`${model.modelName}Table.jsx successfully created.`);
+      }
+    }
+  );
+};
 
 const generateRest = (model) => {
   var generatedCode = `
@@ -179,8 +361,8 @@ ${
 def ${model.modelName}GetItems(request):
   try:
     snippet = ${model.modelName}.objects.all()
-    serializer = ${model.modelName}Serializer(snippet)
-    return Response(serializer.data)
+    serializer = ${model.modelName}Serializer(snippet,many=True)
+    return Response({"items":serializer.data})
   except:
     return Response(status=status.HTTP_404_NOT_FOUND)
 
@@ -274,7 +456,7 @@ from .models import *
 `;
 
   const importedObject = require(path.resolve(DRBSCHEMA_PATH, item));
-  var urlCode = "from django.urls import path\n\nurlpatterns=[\n"
+  var urlCode = "from django.urls import path\n\nurlpatterns=[\n";
   var serializerCode = `from rest_framework import serializers\nfrom ${importedObject.DRBObject.django.app}.models import *\n`;
   const appPath = path.resolve(
     DRBDJANGO_PATH,
@@ -287,10 +469,11 @@ from .models import *
     serializerCode += generateSerializer(model);
     generateForm(model);
     restCode += generateRest(model);
-    urlCode+=generateApiUrls(model);
+    urlCode += generateApiUrls(model);
+    generateTable(model);
   });
 
-  urlCode+="]"
+  urlCode += "]";
   fs.writeFile(path.resolve(appPath, "models.py"), modelCode, (err) => {
     if (err) {
       console.error(err);

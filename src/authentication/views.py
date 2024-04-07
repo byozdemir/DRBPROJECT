@@ -49,3 +49,4 @@ def login(request):
 @permission_classes([IsAuthenticated])
 def test_token(request):
     return Response("passed!")
+  
