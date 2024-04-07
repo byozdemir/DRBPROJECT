@@ -20,7 +20,7 @@ from django.views.decorators.cache import cache_page
 from . import views,settings
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path("api/",include('accounts.urls')),
+    path("api/",include('api.urls')),
     path('', cache_page(settings.PAGE_CACHE_SECONDS)(views.index), name='index'),
     path('<path:path>', cache_page(settings.PAGE_CACHE_SECONDS)(views.index), name='index'),
 ]

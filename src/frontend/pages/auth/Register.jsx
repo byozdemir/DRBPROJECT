@@ -16,7 +16,7 @@ const Register = () => {
   const signUp = async (data) => {
     setLoading(true);
     api
-      .post("signup", data)
+      .post("authentication/signup", data)
       .then((response) => {
         login(response.data.username, response.data.token);
         toast.success("Successfuly Registered. You'll be redirected.")

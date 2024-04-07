@@ -1,12 +1,14 @@
 # DRB = DJANGO REACT BOILERPLATE
 
+## DRB Terminal Info
+Drb terminal is only support text input at the moment.
+
 ### UNDER DEVELOPMENT!!
 
 ### features to be Developed
-- [ ] DRB Terminal.(With some super powers)
 - [ ] Shacdn UI Integration
 - [ ] Social Authentication
-- [ ] Object Based Code Generation (Create object for your models and drb will code django and frontend side.)
+
 
 ### Used Techs
 - [x] Django
@@ -22,9 +24,11 @@
 - [x] Yup
 
 ### Features
+- [x] Object Based Code Generation (Create object for your models and drb will code django and frontend side.)
 - [x] Authentication System
 - [x] React frontend integrated to django system.
 - [x] Ready to Use
+
 
 #### Protected Pages
 Add the pages you want to be protected to the "AuthContainer" in the routes.jsx page.

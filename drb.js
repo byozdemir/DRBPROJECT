@@ -7,7 +7,6 @@ const DRBFRONTEND_PATH = path.resolve(DRBDJANGO_PATH, "frontend");
 const SCHEMA_PATH = path.resolve(DRBFRONTEND_PATH, "lib/schemas");
 const FORM_PATH = path.resolve(DRBFRONTEND_PATH, "components/forms");
 
-
 const generateModel = (model) => {
   var generatedCode = `\nclass ${model.modelName}(models.Model):\n`;
   model.fields.forEach((field) => {
@@ -54,7 +53,9 @@ const generateSchema = (model) => {
 };
 
 const generateForm = (model) => {
-  const serializedFields = model.fields.filter(field=>field.serialize===undefined)
+  const serializedFields = model.fields.filter(
+    (field) => field.serialize === undefined
+  );
   var generatedCode = `
   import React,{useEffect} from 'react';
   import { useForm } from "react-hook-form";
@@ -72,14 +73,16 @@ const generateForm = (model) => {
 
     useEffect(()=>{
       if(entryID>0){
-        api.get('${model.modelName}/getentry/'+entryID)
+        api.get('${model.modelName}/${model.modelName}Edit/'+entryID)
         .then((response)=>{
-            const {${serializedFields.map((field)=>"get_"+field.fieldName)}} = response.data
-            ${serializedFields.map((field)=>{
-              return (
-                `setValue(${field.fieldName},get_${field.fieldName})\n`
-              )
-            }).join('\t\t')}
+            const {${serializedFields.map(
+              (field) => "get_" + field.fieldName
+            )}} = response.data
+            ${serializedFields
+              .map((field) => {
+                return `setValue(${field.fieldName},get_${field.fieldName})\n`;
+              })
+              .join("\t\t")}
         })
         .catch((err)=>{
           toast.error('Error!. Please check the developer console.')
@@ -90,7 +93,9 @@ const generateForm = (model) => {
 
     const formHandler = async (data) => {
       setSubmitting(true);
-      const url = entryID > 0 ? "edit/"+entryID : "create/";
+      const url = entryID > 0 ? "${model.modelName}/${
+    model.modelName
+  }Edit/"+entryID : "${model.modelName}/${model.modelName}Create/";
       api
         .post(url, data)
         .then((response) => {
@@ -125,32 +130,115 @@ const generateForm = (model) => {
   }
   export default ${model.modelName}Form;
   `;
-  fs.writeFile(path.resolve(FORM_PATH, `${model.modelName}Form.jsx`), generatedCode, (err) => {
-    if (err) {
-      console.error(err);
-    } else {
-      console.log(
-        `${model.modelName}Form.jsx successfully created.`
-      );
+  fs.writeFile(
+    path.resolve(FORM_PATH, `${model.modelName}Form.jsx`),
+    generatedCode,
+    (err) => {
+      if (err) {
+        console.error(err);
+      } else {
+        console.log(`${model.modelName}Form.jsx successfully created.`);
+      }
     }
-  });
+  );
 };
 
 const generateSerializer = (model) => {
   generatedCode = `class ${model.modelName}Serializer(serializers.ModelSerializer):\n`;
-  generatedCode += "\tclass Meta(Object):\n";
+  generatedCode += "\tclass Meta(object):\n";
   generatedCode += `\t\tmodel = ${model.modelName}\n`;
   generatedCode += `\t\tfields = [${model.fields.map((item) => {
     return '"' + item.fieldName + '"';
   })}]`;
-  
+
   generatedCode += "\n\n";
   return generatedCode;
 };
 
-const generateApiUrls = (model) => {};
+const generateApiUrls = (model) => {
 
-const generateRest = (model) => {};
+
+
+};
+
+const generateTable = (model) => {};
+
+const generateRest = (model) => {
+  var generatedCode = `
+@api_view(['GET'])
+${
+  model.auth?.includes("list")
+    ? `@authentication_classes([SessionAuthentication, TokenAuthentication])
+@permission_classes([IsAuthenticated])`
+    : ""
+}
+def ${model.modelName}GetItems(request):
+  try:
+    snippet = ${model.modelName}.objects.all()
+    serializer = ${model.modelName}Serializer(snippet)
+    return Response(serializer.data)
+  except:
+    return Response(status=status.HTTP_404_NOT_FOUND)
+
+${
+  model.auth?.includes("create")
+    ? `@authentication_classes([SessionAuthentication, TokenAuthentication])
+@permission_classes([IsAuthenticated])`
+    : ""
+}
+@api_view(['POST'])
+def ${model.modelName}Create(request):
+  serializer = ${model.modelName}Serializer(data=request.data)
+  if serializer.is_valid():
+    serializer.save()
+    return Response(status=status.HTTP_200_OK)
+  return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+${
+  model.auth?.includes("edit")
+    ? `@authentication_classes([SessionAuthentication, TokenAuthentication])
+@permission_classes([IsAuthenticated])`
+    : ""
+}
+@api_view(['GET','PUT'])
+def ${model.modelName}Edit(request,pk):
+  try:
+    snippet = ${model.modelName}.objects.get(pk=pk)
+  except ${model.modelName}.DoesNotExist:
+    return Response(status=status.HTTP_404_NOT_FOUND) 
+  
+  if request.method == 'GET':
+    serializer = ${model.modelName}Serializer(snippet)
+    return Response(serializer.data)
+
+  if request.method == 'PUT':
+    serializer = ${model.modelName}Serializer(data=request.data)
+    if serializer.is_valid():
+      serializer.save()
+      return Response(status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+${
+  model.auth?.includes("delete")
+    ? `@authentication_classes([SessionAuthentication, TokenAuthentication])
+@permission_classes([IsAuthenticated])`
+    : ""
+}
+@api_view(['DELETE'])
+def ${model.modelName}Delete(request,pk):
+  try:
+    snippet = ${model.modelName}.objects.get(pk=pk)
+  except ${model.modelName}.DoesNotExist:
+    return Response(status=status.HTTP_404_NOT_FOUND) 
+  
+  try:
+    snippet.delete()
+    return Response(status=status.HTTP_200_OK)
+  except:
+    return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+  `;
+  return generatedCode;
+};
 
 const getAllDrbSchema = (target) => {
   const files = fs
@@ -165,11 +253,21 @@ const getAllDrbSchema = (target) => {
   return files;
 };
 
-
 const files = getAllDrbSchema(DRBSCHEMA_PATH);
 files.forEach((item) => {
   var modelCode = "from django.db import models\n\n";
   var schemaCode = "import * as yup from 'yup';\n";
+  var restCode = `
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from rest_framework.authtoken.models import Token
+from .serializers import *
+from .models import *
+`;
 
   const importedObject = require(path.resolve(DRBSCHEMA_PATH, item));
   var serializerCode = `from rest_framework import serializers\nfrom ${importedObject.DRBObject.django.app}.models import *\n`;
@@ -183,6 +281,7 @@ files.forEach((item) => {
     schemaCode += generateSchema(model);
     serializerCode += generateSerializer(model);
     generateForm(model);
+    restCode += generateRest(model);
   });
   fs.writeFile(path.resolve(appPath, "models.py"), modelCode, (err) => {
     if (err) {
@@ -242,4 +341,18 @@ files.forEach((item) => {
       }
     }
   );
+  fs.writeFile(path.resolve(appPath, "views.py"), restCode, (err) => {
+    if (err) {
+      console.error(err);
+    } else {
+      console.log(
+        `${
+          importedObject.DRBObject.django.app
+        } Views file successfully created to path:${path.resolve(
+          appPath,
+          "views.py"
+        )}`
+      );
+    }
+  });
 });

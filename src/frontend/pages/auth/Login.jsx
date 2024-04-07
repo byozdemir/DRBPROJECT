@@ -12,7 +12,7 @@ const Login = () => {
   const signIn = async () => {
     setLoading(true);
     api
-      .post("login", {
+      .post("authentication/login", {
         username: username,
         password: password,
       })
