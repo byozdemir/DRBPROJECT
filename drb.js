@@ -156,9 +156,13 @@ const generateSerializer = (model) => {
 };
 
 const generateApiUrls = (model) => {
-
-
-
+    var generatedCode = `
+    path('${model.modelName}GetItems/',views.${model.modelName}GetItems),
+    path('${model.modelName}Create/',views.${model.modelName}Create),
+    path('${model.modelName}Edit/<int:pk>',views.${model.modelName}Edit),
+    path('${model.modelName}Delete/<int:pk>',views.${model.modelName}Delete),
+    `
+    return generatedCode
 };
 
 const generateTable = (model) => {};
@@ -270,6 +274,7 @@ from .models import *
 `;
 
   const importedObject = require(path.resolve(DRBSCHEMA_PATH, item));
+  var urlCode = "from django.urls import path\n\nurlpatterns=[\n"
   var serializerCode = `from rest_framework import serializers\nfrom ${importedObject.DRBObject.django.app}.models import *\n`;
   const appPath = path.resolve(
     DRBDJANGO_PATH,
@@ -282,7 +287,10 @@ from .models import *
     serializerCode += generateSerializer(model);
     generateForm(model);
     restCode += generateRest(model);
+    urlCode+=generateApiUrls(model);
   });
+
+  urlCode+="]"
   fs.writeFile(path.resolve(appPath, "models.py"), modelCode, (err) => {
     if (err) {
       console.error(err);
@@ -351,6 +359,20 @@ from .models import *
         } Views file successfully created to path:${path.resolve(
           appPath,
           "views.py"
+        )}`
+      );
+    }
+  });
+  fs.writeFile(path.resolve(appPath, "urls.py"), urlCode, (err) => {
+    if (err) {
+      console.error(err);
+    } else {
+      console.log(
+        `${
+          importedObject.DRBObject.django.app
+        } Url file successfully created to path:${path.resolve(
+          appPath,
+          "urls.py"
         )}`
       );
     }
