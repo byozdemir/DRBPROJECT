@@ -1,17 +1,20 @@
 import React, { useState } from "react";
 import api from "../../stores/api.js";
 import { useAuthStore } from "../../stores/auth.js";
-import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useForm } from "react-hook-form"
+import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import RegisterSchema from "../../lib/schemas/RegisterSchema.js"
+import RegisterSchema from "../../lib/schemas/RegisterSchema.js";
 const Register = () => {
-  
   const [loading, setLoading] = useState(false);
   const login = useAuthStore((state) => state.login);
-  const { register, handleSubmit,formState: { errors }, reset } = useForm({resolver:yupResolver(RegisterSchema)});
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm({ resolver: yupResolver(RegisterSchema) });
 
   const signUp = async (data) => {
     setLoading(true);
@@ -19,13 +22,13 @@ const Register = () => {
       .post("authentication/signup", data)
       .then((response) => {
         login(response.data.username, response.data.token);
-        toast.success("Successfuly Registered. You'll be redirected.")
-        setTimeout(()=>{
+        toast.success("Successfuly Registered. You'll be redirected.");
+        setTimeout(() => {
           location.href = "/";
-        },1000)
+        }, 1000);
       })
       .catch((err) => {
-        toast.error(err.response.data.username[0])
+        toast.error(err.response.data.username[0]);
       })
       .finally(() => {
         setLoading(false);
@@ -49,7 +52,6 @@ const Register = () => {
                       type="text"
                       {...register("username")}
                       placeholder="Username"
-                      
                     />
                     <p className="text-red-500">{errors.username?.message}</p>
                     <input
@@ -64,9 +66,10 @@ const Register = () => {
                       type="password"
                       {...register("passwordrepeat")}
                       placeholder="Password Repeat"
-                      
                     />
-                    <p className="text-red-500">{errors.passwordrepeat?.message}</p>
+                    <p className="text-red-500">
+                      {errors.passwordrepeat?.message}
+                    </p>
                     <button
                       type="submit"
                       disabled={loading}

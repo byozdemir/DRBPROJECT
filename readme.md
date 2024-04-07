@@ -2,6 +2,8 @@
 
 ## DRB Terminal Info
 Drb terminal is only support text input at the moment.
+You can create django model,serializer,urls,views and react schema,form and table with drbshema file.
+Crud system will be ready when you use drbschema.
 
 ### UNDER DEVELOPMENT!!
 

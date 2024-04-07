@@ -31,8 +31,8 @@ const generateModel = (model) => {
   return generatedCode;
 };
 
-const generateSchema = (model) => {
-  var generatedCode = `\nconst ${model.modelName}Schema = yup.object().shape({\n`;
+const generateSchema = (model, app) => {
+  var generatedCode = `import * as yup from "yup";\nconst ${model.modelName}Schema = yup.object().shape({\n`;
   model.fields.forEach((field) => {
     if (field.formItem == false) {
       return;
@@ -48,27 +48,55 @@ const generateSchema = (model) => {
     }
     generatedCode += "\n";
   });
-  generatedCode += "});\n";
+  generatedCode += `});\nexport default ${model.modelName}Schema`;
 
-  return generatedCode;
+  try {
+    if (
+      !fs.existsSync(
+        path.resolve(SCHEMA_PATH, app)
+      )
+    ) {
+      fs.mkdirSync(path.resolve(SCHEMA_PATH, app));
+    }
+  } catch (err) {
+    console.error(err);
+  }
+
+  fs.writeFile(
+    path.resolve(SCHEMA_PATH, app + "/" + `${model.modelName}Schema.js`),
+    generatedCode,
+    (err) => {
+      if (err) {
+        console.error(err);
+      } else {
+        console.log(
+          `${app} Schema file successfully created to path:${path.resolve(
+            SCHEMA_PATH,
+            app + `${model.modelName}Schema.js`
+          )}`
+        );
+      }
+    }
+  );
 };
 
-const generateForm = (model) => {
+const generateForm = (model, appName) => {
   const serializedFields = model.fields.filter(
     (field) => field.serialize === undefined
   );
   var generatedCode = `
-  import React,{useEffect} from 'react';
+  import React,{useEffect,useState} from 'react';
+  import "react-toastify/dist/ReactToastify.css";
   import { useForm } from "react-hook-form";
   import { yupResolver } from "@hookform/resolvers/yup";
   import { toast } from "react-toastify";
-  import {${model.modelName}Schema} from '../../lib/${
+  import ${
     model.modelName
-  }Schema.js';
+  }Schema from '../../lib/schemas/${appName}/${model.modelName}Schema.js';
   import api from "../../stores/api.js";
-  const ${model.modelName}Form = ()=>{
+  const ${model.modelName}Form = ({objectID})=>{
     const [submitting, setSubmitting] = useState(false);
-    const [entryID,setEntryID] = useState(0);
+    const [entryID,setEntryID] = useState(objectID);
     const { register,setValue, handleSubmit,formState: { errors }, reset } = useForm({resolver:yupResolver(${
       model.modelName
     }Schema)});
@@ -78,11 +106,11 @@ const generateForm = (model) => {
         api.get('${model.modelName}/${model.modelName}Edit/'+entryID)
         .then((response)=>{
             const {${serializedFields.map(
-              (field) => "get_" + field.fieldName
+              (field) => field.fieldName
             )}} = response.data
             ${serializedFields
               .map((field) => {
-                return `setValue(${field.fieldName},get_${field.fieldName})\n`;
+                return `setValue("${field.fieldName}",${field.fieldName})\n`;
               })
               .join("\t\t")}
         })
@@ -98,8 +126,9 @@ const generateForm = (model) => {
       const url = entryID > 0 ? "${model.modelName}/${
     model.modelName
   }Edit/"+entryID : "${model.modelName}/${model.modelName}Create/";
-      api
-        .post(url, data)
+  entryID > 0
+  ? api.put(url, data)
+  : api.post(url,data)
         .then((response) => {
           toast.success("Action successfully completed")
         })
@@ -125,7 +154,7 @@ const generateForm = (model) => {
               }
             })
             .join("\t")}
-          <button type="submit" className="py-4 rounded-lg font-semibold mt-5 flex items-center justify-center" disabled={submitting}></button>
+          <button type="submit" className="py-4 rounded-lg font-semibold mt-5 flex items-center justify-center" disabled={submitting}>Save</button>
         </form>
       </>
     )
@@ -149,7 +178,7 @@ const generateSerializer = (model) => {
   generatedCode = `class ${model.modelName}Serializer(serializers.ModelSerializer):\n`;
   generatedCode += "\tclass Meta(object):\n";
   generatedCode += `\t\tmodel = ${model.modelName}\n`;
-  generatedCode += `\t\tfields = [${model.fields.map((item) => {
+  generatedCode += `\t\tfields = ["id",${model.fields.map((item) => {
     return '"' + item.fieldName + '"';
   })}]`;
 
@@ -175,12 +204,15 @@ const generateTable = (model) => {
   import React,{useState,useEffect} from "react";
   import api from "../../stores/api.js";
   import { toast } from "react-toastify";
+  import "react-toastify/dist/ReactToastify.css";
   import {
     MaterialReactTable,
     createMRTColumnHelper,
     useMaterialReactTable,
   } from 'material-react-table';
-  import { Box, Button } from '@mui/material';
+  import { Box, Button,Tooltip,IconButton } from '@mui/material';
+  import EditIcon from '@mui/icons-material/Edit';
+  import DeleteIcon from '@mui/icons-material/Delete';
   import FileDownloadIcon from '@mui/icons-material/FileDownload';
   import { mkConfig, generateCsv, download } from 'export-to-csv';
   const columnHelper = createMRTColumnHelper();
@@ -208,7 +240,7 @@ const generateTable = (model) => {
     const [isLoading,setIsLoading] = useState(false)
     useEffect(()=>{
         setIsLoading(true);
-        api.get("${model.modelName}/${model.modelName}/GetItems")
+        api.get("${model.modelName}/${model.modelName}GetItems/")
         .then((response)=>{
             setData(response.data.items)
         })
@@ -233,17 +265,21 @@ const generateTable = (model) => {
     };
   
     const editRow = (row)=>{
-      window.location = "${model.modelName}/${model.modelName}/Edit"+row.original.id
+      window.location = "${model.modelName}/${
+    model.modelName
+  }Edit/"+row.original.id
     }
   
     const deleteRow = (row)=>{
-      if(window.confim("Are you sure you want to delete this entry?")){
-        api.delete("${model.modelName}/${model.modelName}/Delete/"+row.original.id)
+      if(window.confirm("Are you sure you want to delete this entry?")){
+        api.delete("${model.modelName}/${
+    model.modelName
+  }Delete/"+row.original.id)
         .then((response)=>{
             toast.success('Entry successfully deleted. ')
             // Write code here.
         })
-        .cath((err)=>{
+        .catch((err)=>{
           toast.error("Error! Please check the developer console");
           console.log(err)
         })
@@ -398,7 +434,8 @@ def ${model.modelName}Edit(request,pk):
     return Response(serializer.data)
 
   if request.method == 'PUT':
-    serializer = ${model.modelName}Serializer(data=request.data)
+    snippet = ${model.modelName}.objects.get(pk=pk)
+    serializer = ${model.modelName}Serializer(instance=snippet,data=request.data)
     if serializer.is_valid():
       serializer.save()
       return Response(status=status.HTTP_200_OK)
@@ -442,7 +479,6 @@ const getAllDrbSchema = (target) => {
 const files = getAllDrbSchema(DRBSCHEMA_PATH);
 files.forEach((item) => {
   var modelCode = "from django.db import models\n\n";
-  var schemaCode = "import * as yup from 'yup';\n";
   var restCode = `
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
@@ -456,7 +492,8 @@ from .models import *
 `;
 
   const importedObject = require(path.resolve(DRBSCHEMA_PATH, item));
-  var urlCode = "from django.urls import path\n\nurlpatterns=[\n";
+  var urlCode =
+    "from django.urls import path\nfrom . import views\n\nurlpatterns=[\n";
   var serializerCode = `from rest_framework import serializers\nfrom ${importedObject.DRBObject.django.app}.models import *\n`;
   const appPath = path.resolve(
     DRBDJANGO_PATH,
@@ -465,9 +502,9 @@ from .models import *
   importedObject.DRBObject.django.models.forEach((model) => {
     const code = generateModel(model);
     modelCode += code;
-    schemaCode += generateSchema(model);
+    generateSchema(model, importedObject.DRBObject.django.app);
     serializerCode += generateSerializer(model);
-    generateForm(model);
+    generateForm(model, importedObject.DRBObject.django.app);
     restCode += generateRest(model);
     urlCode += generateApiUrls(model);
     generateTable(model);
@@ -488,32 +525,7 @@ from .models import *
       );
     }
   });
-  schemaCode += `module.exports = {
-    ${importedObject.DRBObject.django.models.map((item) => {
-      return `${item.modelName}Serializers`;
-    })}
-  }`;
-  fs.writeFile(
-    path.resolve(
-      SCHEMA_PATH,
-      importedObject.DRBObject.django.app + "Schema.js"
-    ),
-    schemaCode,
-    (err) => {
-      if (err) {
-        console.error(err);
-      } else {
-        console.log(
-          `${
-            importedObject.DRBObject.django.app
-          } Schema file successfully created to path:${path.resolve(
-            SCHEMA_PATH,
-            importedObject.DRBObject.django.app + "Schema.js"
-          )}`
-        );
-      }
-    }
-  );
+
   fs.writeFile(
     path.resolve(appPath, "serializers.py"),
     serializerCode,
